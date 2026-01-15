@@ -30,6 +30,10 @@
   "author": "Sergio Sanmiguel",
   "license": "MIT",
   "devDependencies": {
+    "@types/dotenv": "^6.1.1",
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3"
   }
 }
