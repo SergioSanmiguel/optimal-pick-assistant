@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { RecommendationWeights } from '../types';
+import { RecommendationWeights } from '../../types';
 
 interface SettingsPanelProps {
   weights: RecommendationWeights;

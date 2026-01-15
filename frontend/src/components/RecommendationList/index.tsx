@@ -1,5 +1,5 @@
 import { Trophy, TrendingUp, Users as UsersIcon, Swords } from 'lucide-react';
-import { RecommendationScore } from '../types';
+import { RecommendationScore } from '../../types';
 
 interface RecommendationListProps {
   recommendations: RecommendationScore[];

@@ -1,5 +1,5 @@
 import { Users, Swords } from 'lucide-react';
-import { ChampionSelectState, Role } from '../types';
+import { ChampionSelectState, Role } from '../../types';
 
 interface ChampionSelectMonitorProps {
   championSelect: ChampionSelectState | null;
