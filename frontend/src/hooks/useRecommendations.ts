@@ -1,0 +1,49 @@
+import { useState, useEffect, useCallback } from 'react';
+import apiService from '../services/api.service';
+import { 
+  AppStatus, 
+  ChampionSelectState, 
+  RecommendationScore, 
+  RecommendationWeights,
+  Role 
+} from '../types';
+
+export function useRecommendations(
+  championSelect: ChampionSelectState | null,
+  selectedRole: Role | undefined,
+  weights: RecommendationWeights
+) {
+  const [recommendations, setRecommendations] = useState<RecommendationScore[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchRecommendations = useCallback(async () => {
+    if (!championSelect || !selectedRole) {
+      setRecommendations([]);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await apiService.getRecommendations(
+        { ...championSelect, myRole: selectedRole },
+        weights,
+        5
+      );
+      
+      setRecommendations(response.recommendations);
+      setError(null);
+    } catch (err) {
+      setError(err as Error);
+      setRecommendations([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [championSelect, selectedRole, weights]);
+
+  useEffect(() => {
+    fetchRecommendations();
+  }, [fetchRecommendations]);
+
+  return { recommendations, isLoading, error, refetch: fetchRecommendations };
+}

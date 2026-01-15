@@ -32,8 +32,8 @@ class Application {
     this.app.use(express.urlencoded({ extended: true }));
 
     // Request logging
-    this.app.use((req: Request, res: Response, next: NextFunction) => {
-      logger.debug(`${req.method} ${req.path}`);
+    this.app.use((_req: Request, _res: Response, next: NextFunction) => {
+      logger.debug(`${_req.method} ${_req.path}`);
       next();
     });
   }
@@ -45,7 +45,7 @@ class Application {
     const router = express.Router();
 
     // Health check
-    router.get('/health', (req: Request, res: Response) => {
+    router.get('/health', (_req: Request, res: Response) => {
       res.json({ status: 'ok', timestamp: Date.now() });
     });
 
@@ -74,7 +74,7 @@ class Application {
     this.app.use(router);
 
     // 404 handler
-    this.app.use((req: Request, res: Response) => {
+    this.app.use((_req: Request, res: Response) => {
       res.status(404).json({ error: 'Endpoint not found' });
     });
   }
@@ -83,7 +83,7 @@ class Application {
    * Setup global error handling
    */
   private setupErrorHandling(): void {
-    this.app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    this.app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
       logger.error('Unhandled error:', err);
       res.status(500).json({ 
         error: 'Internal server error',

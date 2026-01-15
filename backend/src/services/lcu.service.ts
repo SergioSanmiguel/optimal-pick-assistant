@@ -3,6 +3,7 @@ import https from 'https';
 import { WebSocket } from 'ws';
 import config from '../config';
 import logger from '../utils/logger';
+// @ts-ignore TS6133
 import { LCUCredentials, LCUConnectionError, ChampionSelectState, PickedChampion } from '../types';
 
 /**

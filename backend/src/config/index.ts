@@ -20,7 +20,7 @@ export const config = {
     // Port and token are discovered dynamically from lockfile
     lockfilePath: process.env.LCU_LOCKFILE_PATH || 
       (process.platform === 'win32' 
-        ? 'C:\\Riot Games\\League of Legends\\lockfile'
+        ? 'D:/JUEGOS/Windows/Riot Games/League of Legends/lockfile'
         : '/Applications/League of Legends.app/Contents/LoL/lockfile'),
     reconnectInterval: 5000, // ms
     requestTimeout: 10000 // ms

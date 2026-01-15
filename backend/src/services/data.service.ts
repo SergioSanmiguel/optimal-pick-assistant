@@ -10,6 +10,7 @@ import { ChampionStats, Matchup, Synergy, Role, DataFetchError } from '../types'
  */
 class DataService {
   private client: AxiosInstance;
+  // @ts-ignore TS6133
   private currentPatch: string | null = null;
 
   constructor() {
@@ -177,7 +178,7 @@ class DataService {
       const response = await this.client.get(url);
       const championsMap = new Map<number, string>();
 
-      for (const [key, data] of Object.entries(response.data.data) as [string, any][]) {
+      for (const [_key, data] of Object.entries(response.data.data) as [string, any][]) {
         championsMap.set(parseInt(data.key), data.name);
       }
 

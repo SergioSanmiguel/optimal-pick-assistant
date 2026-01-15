@@ -56,7 +56,7 @@ export class ApiController {
    * GET /api/champion-select
    * Get current champion select session from League Client
    */
-  async getChampionSelect(req: Request, res: Response): Promise<void> {
+  async getChampionSelect(_req: Request, res: Response): Promise<void> {
     try {
       const session = await lcuService.getChampionSelectSession();
       
@@ -76,7 +76,7 @@ export class ApiController {
    * GET /api/status
    * Check service health and connection status
    */
-  async getStatus(req: Request, res: Response): Promise<void> {
+  async getStatus(_req: Request, res: Response): Promise<void> {
     try {
       const isConnected = lcuService.isClientConnected();
       const patch = await dataService.getCurrentPatch();
@@ -102,7 +102,7 @@ export class ApiController {
    * GET /api/champions
    * Get list of all champions
    */
-  async getChampions(req: Request, res: Response): Promise<void> {
+  async getChampions(_req: Request, res: Response): Promise<void> {
     try {
       const championsMap = await dataService.getAllChampions();
       const champions = Array.from(championsMap.entries()).map(([id, name]) => ({
@@ -149,7 +149,7 @@ export class ApiController {
    * POST /api/cache/clear
    * Clear all cached data
    */
-  async clearCache(req: Request, res: Response): Promise<void> {
+  async clearCache(_req: Request, res: Response): Promise<void> {
     try {
       cacheService.clear();
       res.json({ message: 'Cache cleared successfully' });
@@ -163,7 +163,7 @@ export class ApiController {
    * POST /api/cache/warmup
    * Warmup cache with popular champions
    */
-  async warmupCache(req: Request, res: Response): Promise<void> {
+  async warmupCache(_req: Request, res: Response): Promise<void> {
     try {
       // Top 30 most popular champions (by champion key)
       const topChampions = [
