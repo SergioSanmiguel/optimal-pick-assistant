@@ -30,7 +30,7 @@ export class ApiController {
 
       const recommendations = await recommendationService.getRecommendations(
         request.currentState,
-        request.weights,
+        request.weights ? recommendationService.normalizeWeights(request.weights) : undefined,
         request.topN || 5
       );
 

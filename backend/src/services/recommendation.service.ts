@@ -272,7 +272,7 @@ class RecommendationService {
   /**
    * Normalize weights to ensure they sum to 1.0
    */
-  private normalizeWeights(weights: Partial<RecommendationWeights>): RecommendationWeights {
+  normalizeWeights(weights: Partial<RecommendationWeights>): RecommendationWeights {
     const defaultWeights = config.defaultWeights;
     const merged = { ...defaultWeights, ...weights };
     
