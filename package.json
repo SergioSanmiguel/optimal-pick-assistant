@@ -1,0 +1,35 @@
+{
+  "name": "optimal-pick-assistant",
+  "version": "1.0.0",
+  "description": "Real-time champion recommendations for League of Legends",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "setup": "bash scripts/setup.sh",
+    "dev": "bash scripts/dev.sh",
+    "build": "npm run build --workspaces",
+    "test": "npm test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "clean": "rm -rf backend/dist frontend/dist backend/node_modules frontend/node_modules node_modules"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SergioSanmiguel/optimal-pick-assistant.git"
+  },
+  "keywords": [
+    "league-of-legends",
+    "lol",
+    "champion-select",
+    "recommendations",
+    "data-analytics",
+    "gaming"
+  ],
+  "author": "Sergio Sanmiguel",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
