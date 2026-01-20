@@ -1,11 +1,26 @@
 import { Trophy, Target, Users as UsersIcon, Swords, TrendingUp, Crown } from 'lucide-react';
 import { RecommendationScore } from '../types';
+import React from 'react';
 
 interface RecommendationCardsProps {
   recommendations: RecommendationScore[];
+  isLoading?: boolean; // opcional, para Skeleton
 }
 
-export default function RecommendationCards({ recommendations }: RecommendationCardsProps) {
+// Componente principal memoizado
+const RecommendationCardsComponent = ({ recommendations, isLoading }: RecommendationCardsProps) => {
+  // Skeleton mientras carga
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="animate-pulse h-32 bg-slate-800/50 rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+
+  // Sin recomendaciones
   if (recommendations.length === 0) {
     return (
       <div className="text-center py-16">
@@ -18,6 +33,7 @@ export default function RecommendationCards({ recommendations }: RecommendationC
     );
   }
 
+  // Renderiza recomendaciones
   return (
     <div className="space-y-4">
       {recommendations.map((rec, index) => (
@@ -25,7 +41,14 @@ export default function RecommendationCards({ recommendations }: RecommendationC
       ))}
     </div>
   );
-}
+};
+
+// Memoiza el componente para que solo renderice si las props cambian realmente
+export default React.memo(RecommendationCardsComponent, (prev, next) => {
+  return prev.recommendations === next.recommendations && prev.isLoading === next.isLoading;
+});
+
+// ------------------ Subcomponentes ------------------
 
 function RecommendationCard({ recommendation, rank }: { recommendation: RecommendationScore; rank: number }) {
   const getTierGradient = (tier: string) => {
@@ -38,11 +61,6 @@ function RecommendationCard({ recommendation, rank }: { recommendation: Recommen
     }
   };
 
-  const getTierIcon = (rank: number) => {
-    if (rank === 1) return <Crown className="text-yellow-400" size={24} />;
-    return <Trophy className="text-slate-400" size={20} />;
-  };
-
   return (
     <div className="group relative bg-slate-800/30 hover:bg-slate-800/50 border border-slate-700/50 hover:border-cyan-500/30 rounded-xl p-5 transition-all duration-300">
       {/* Rank Badge */}
@@ -52,9 +70,7 @@ function RecommendationCard({ recommendation, rank }: { recommendation: Recommen
             ? 'bg-gradient-to-br from-yellow-500 to-amber-500 shadow-lg shadow-yellow-500/25' 
             : 'bg-slate-700 group-hover:bg-slate-600'
         }`}>
-          {rank === 1 && (
-            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-xl blur-xl opacity-50" />
-          )}
+          {rank === 1 && <div className="absolute inset-0 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-xl blur-xl opacity-50" />}
           <span className="relative text-white">{rank}</span>
         </div>
       </div>
@@ -63,14 +79,10 @@ function RecommendationCard({ recommendation, rank }: { recommendation: Recommen
         {/* Champion Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-3">
-            <h3 className="text-xl font-bold text-white">
-              {recommendation.championName}
-            </h3>
-            
+            <h3 className="text-xl font-bold text-white">{recommendation.championName}</h3>
+
             <div className={`px-3 py-1 rounded-lg bg-gradient-to-r ${getTierGradient(recommendation.stats.tier)} shadow-lg`}>
-              <span className="text-xs font-bold text-white">
-                {recommendation.stats.tier} Tier
-              </span>
+              <span className="text-xs font-bold text-white">{recommendation.stats.tier} Tier</span>
             </div>
 
             <div className="ml-auto">
@@ -85,30 +97,10 @@ function RecommendationCard({ recommendation, rank }: { recommendation: Recommen
 
           {/* Stats Grid */}
           <div className="grid grid-cols-4 gap-3 mb-4">
-            <StatPill
-              icon={<Trophy size={14} />}
-              label="Win Rate"
-              value={`${(recommendation.stats.winRate * 100).toFixed(1)}%`}
-              score={recommendation.breakdown.winRateScore}
-            />
-            <StatPill
-              icon={<TrendingUp size={14} />}
-              label="Meta"
-              value={recommendation.stats.tier}
-              score={recommendation.breakdown.pickRateScore}
-            />
-            <StatPill
-              icon={<Swords size={14} />}
-              label="vs Enemy"
-              value={`${recommendation.breakdown.counterScore.toFixed(0)}`}
-              score={recommendation.breakdown.counterScore}
-            />
-            <StatPill
-              icon={<UsersIcon size={14} />}
-              label="Synergy"
-              value={`${recommendation.breakdown.synergyScore.toFixed(0)}`}
-              score={recommendation.breakdown.synergyScore}
-            />
+            <StatPill icon={<Trophy size={14} />} label="Win Rate" value={`${(recommendation.stats.winRate * 100).toFixed(1)}%`} score={recommendation.breakdown.winRateScore} />
+            <StatPill icon={<TrendingUp size={14} />} label="Meta" value={recommendation.stats.tier} score={recommendation.breakdown.pickRateScore} />
+            <StatPill icon={<Swords size={14} />} label="vs Enemy" value={`${recommendation.breakdown.counterScore.toFixed(0)}`} score={recommendation.breakdown.counterScore} />
+            <StatPill icon={<UsersIcon size={14} />} label="Synergy" value={`${recommendation.breakdown.synergyScore.toFixed(0)}`} score={recommendation.breakdown.synergyScore} />
           </div>
 
           {/* Reasoning */}
@@ -126,12 +118,7 @@ function RecommendationCard({ recommendation, rank }: { recommendation: Recommen
   );
 }
 
-function StatPill({ icon, label, value, score }: { 
-  icon: React.ReactNode; 
-  label: string; 
-  value: string; 
-  score: number;
-}) {
+function StatPill({ icon, label, value, score }: { icon: React.ReactNode; label: string; value: string; score: number }) {
   const getScoreColor = (score: number) => {
     if (score >= 70) return 'from-emerald-500/20 to-green-500/20 border-emerald-500/30 text-emerald-400';
     if (score >= 50) return 'from-yellow-500/20 to-amber-500/20 border-yellow-500/30 text-yellow-400';
@@ -144,9 +131,7 @@ function StatPill({ icon, label, value, score }: {
         {icon}
         <span className="text-xs font-medium">{label}</span>
       </div>
-      <div className="text-sm font-bold">
-        {value}
-      </div>
+      <div className="text-sm font-bold">{value}</div>
     </div>
   );
 }

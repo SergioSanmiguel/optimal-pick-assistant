@@ -18,10 +18,7 @@ export function useRecommendations(
   const [error, setError] = useState<Error | null>(null);
 
   const fetchRecommendations = useCallback(async () => {
-    if (!championSelect || !selectedRole) {
-      setRecommendations([]);
-      return;
-    }
+    if (!championSelect || !selectedRole) return; // <- no borrar el array actual
 
     setIsLoading(true);
     try {
@@ -30,12 +27,14 @@ export function useRecommendations(
         weights,
         5
       );
-      
-      setRecommendations(response.recommendations);
+      if (response?.recommendations) {
+        setRecommendations(prev => [...prev]); // <- opcional merge si quieres animación
+        setRecommendations(response.recommendations); // actualizar
+      }
       setError(null);
     } catch (err) {
       setError(err as Error);
-      setRecommendations([]);
+      // no vaciar recommendations
     } finally {
       setIsLoading(false);
     }

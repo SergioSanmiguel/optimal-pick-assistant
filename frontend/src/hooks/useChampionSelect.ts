@@ -17,8 +17,6 @@ export function useChampionSelect() {
     setIsLoading(true);
     try {
       const data = await apiService.getChampionSelect();
-      
-      // Transform LCU data to our format
       if (data) {
         const transformed: ChampionSelectState = {
           myTeam: data.myTeam?.map((p: any) => ({
@@ -41,16 +39,12 @@ export function useChampionSelect() {
           phase: data.timer?.phase || 'pick',
           timer: data.timer?.adjustedTimeLeftInPhase || 0
         };
-        
-        setChampionSelect(transformed);
-      } else {
-        setChampionSelect(null);
+        setChampionSelect(prev => ({ ...prev, ...transformed })); // <- merge con datos previos
       }
-      
       setError(null);
     } catch (err) {
       setError(err as Error);
-      setChampionSelect(null);
+      // no borrar championSelect para evitar flash blanco
     } finally {
       setIsLoading(false);
     }
@@ -58,12 +52,10 @@ export function useChampionSelect() {
 
   useEffect(() => {
     fetchChampionSelect();
-    
-    // Poll every 2 seconds during champion select
     const interval = setInterval(fetchChampionSelect, 2000);
-    
     return () => clearInterval(interval);
   }, [fetchChampionSelect]);
 
   return { championSelect, isLoading, error, refetch: fetchChampionSelect };
 }
+
