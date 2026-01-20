@@ -13,46 +13,52 @@ export const config = {
     }
   },
 
+  // Riot Games API configuration
+  riot: {
+    apiKey: process.env.RIOT_API_KEY || '',
+    region: process.env.RIOT_REGION || 'europe', // americas, europe, asia, sea
+    platform: process.env.RIOT_PLATFORM || 'euw1', // na1, euw1, kr, etc.
+    rateLimit: {
+      requestsPerSecond: 20,
+      requestsPer2Minutes: 100
+    }
+  },
+
   // LCU (League Client) configuration
   lcu: {
     protocol: 'https',
     host: '127.0.0.1',
-    // Port and token are discovered dynamically from lockfile
     lockfilePath: process.env.LCU_LOCKFILE_PATH || 
       (process.platform === 'win32' 
         ? 'D:/JUEGOS/Windows/Riot Games/League of Legends/lockfile'
         : '/Applications/League of Legends.app/Contents/LoL/lockfile'),
-    reconnectInterval: 5000, // ms
-    requestTimeout: 10000 // ms
+    reconnectInterval: 5000,
+    requestTimeout: 10000
   },
 
-  // Data service configuration
+  // Data service configuration (now using Riot API)
   dataService: {
-    cacheDuration: 3600000, // 1 hour in milliseconds
+    cacheDuration: 3600000, // 1 hour
     retryAttempts: 3,
-    retryDelay: 2000, // ms
-    endpoints: {
-      ugg: {
-        base: 'https://u.gg/api',
-        version: 'v2',
-        // U.GG uses dynamic patch version, will be fetched
-      }
-    }
+    retryDelay: 2000,
+    sampleSize: 200, // Number of matches to analyze per champion
+    minMatches: 30 // Minimum matches required for stats
   } as DataServiceConfig,
 
   // Default recommendation weights
   defaultWeights: {
-    winRate: 0.40,      // 40% - Most important for raw strength
-    pickRate: 0.10,     // 10% - Indicates reliability/meta presence
-    counterScore: 0.30, // 30% - Critical for laning phase
-    synergyScore: 0.20  // 20% - Team composition matters
+    winRate: 0.40,
+    pickRate: 0.10,
+    counterScore: 0.30,
+    synergyScore: 0.20
   } as RecommendationWeights,
 
   // Cache settings
   cache: {
     championStatsExpiry: 3600000, // 1 hour
-    matchupDataExpiry: 7200000,   // 2 hours
-    patchDataExpiry: 86400000     // 24 hours
+    matchupDataExpiry: 7200000, // 2 hours
+    patchDataExpiry: 86400000, // 24 hours
+    highEloPlayersExpiry: 86400000 // 24 hours
   },
 
   // Logging
@@ -66,8 +72,15 @@ export const config = {
   features: {
     enableSynergyCalculation: true,
     enableCounterCalculation: true,
-    enableAdvancedMetrics: true
+    enableAdvancedMetrics: true,
+    useLCU: true // Can disable LCU if not available
   }
 };
+
+// Validate Riot API key on startup
+if (!config.riot.apiKey && process.env.NODE_ENV === 'production') {
+  console.error('⚠️  RIOT_API_KEY is not set! The application will not work properly.');
+  console.error('   Get your API key from: https://developer.riotgames.com/');
+}
 
 export default config;

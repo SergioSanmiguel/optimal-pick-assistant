@@ -1,5 +1,6 @@
 import config from '../config';
-import dataService from './data.service';
+import statsAggregatorService from './stats-aggregator.service';
+import riotApiService from './riot-api.service';
 import logger from '../utils/logger';
 import {
   Role,
@@ -12,11 +13,10 @@ import {
 } from '../types';
 
 /**
- * Core recommendation engine
- * Implements multi-factor weighted scoring algorithm
+ * Core recommendation engine using Riot API data
  */
 class RecommendationService {
-  private championsMap: Map<number, string> | null = null;
+  private championsMap: Map<number, any> | null = null;
 
   constructor() {
     this.initialize();
@@ -24,8 +24,8 @@ class RecommendationService {
 
   private async initialize(): Promise<void> {
     try {
-      this.championsMap = await dataService.getAllChampions();
-      logger.info('Recommendation service initialized');
+      this.championsMap = await riotApiService.getAllChampions();
+      logger.info(`Recommendation service initialized with ${this.championsMap.size} champions`);
     } catch (error) {
       logger.error('Failed to initialize recommendation service', error);
     }
@@ -44,12 +44,12 @@ class RecommendationService {
     }
 
     if (!this.championsMap) {
-      this.championsMap = await dataService.getAllChampions();
+      this.championsMap = await riotApiService.getAllChampions();
     }
 
     logger.info(`Generating recommendations for ${state.myRole}`);
 
-    // Get all available champions (exclude picked and banned)
+    // Get all available champions
     const pickedIds = new Set([
       ...state.myTeam.map(p => p.championId),
       ...state.enemyTeam.map(p => p.championId),
@@ -59,17 +59,22 @@ class RecommendationService {
     const availableChampions = Array.from(this.championsMap.keys())
       .filter(id => !pickedIds.has(id));
 
-    // Calculate scores for each available champion
-    const scores = await Promise.all(
-      availableChampions.map(championId =>
-        this.calculateChampionScore(championId, state, weights)
-      )
-    );
+    // Calculate scores concurrently (limited batches to respect rate limits)
+    const batchSize = 10;
+    const allScores: RecommendationScore[] = [];
 
-    // Filter out null scores and sort by total score
-    const validScores = scores
-      .filter((score): score is RecommendationScore => score !== null)
-      .sort((a, b) => b.totalScore - a.totalScore);
+    for (let i = 0; i < availableChampions.length; i += batchSize) {
+      const batch = availableChampions.slice(i, i + batchSize);
+      const batchScores = await Promise.all(
+        batch.map(championId =>
+          this.calculateChampionScore(championId, state, weights)
+        )
+      );
+      allScores.push(...batchScores.filter((s): s is RecommendationScore => s !== null));
+    }
+
+    // Sort by total score
+    const validScores = allScores.sort((a, b) => b.totalScore - a.totalScore);
 
     logger.info(`Generated ${validScores.length} recommendations`);
     return validScores.slice(0, topN);
@@ -85,36 +90,36 @@ class RecommendationService {
   ): Promise<RecommendationScore | null> {
     const role = state.myRole!;
 
-    // Fetch base stats
-    const stats = await dataService.getChampionStats(championId, role);
-    if (!stats || stats.matches < 100) {
-      // Skip champions with insufficient data
+    // Fetch stats from aggregated Riot API data
+    const stats = await statsAggregatorService.getChampionStats(championId, role);
+    if (!stats || stats.matches < config.dataService.minMatches) {
       return null;
     }
 
-    // Calculate individual score components
+    // Calculate individual components
     const winRateScore = this.calculateWinRateScore(stats);
     const pickRateScore = this.calculatePickRateScore(stats);
     const counterScore = await this.calculateCounterScore(championId, state, role);
     const synergyScore = await this.calculateSynergyScore(championId, state, role);
 
-    // Apply weights to calculate total score
+    // Apply weights
     const totalScore = 
       (winRateScore * weights.winRate) +
       (pickRateScore * weights.pickRate) +
       (counterScore * weights.counterScore) +
       (synergyScore * weights.synergyScore);
 
-    // Generate reasoning
     const reasoning = this.generateReasoning(
       stats,
       { winRateScore, pickRateScore, counterScore, synergyScore },
       state
     );
 
+    const championData = this.championsMap!.get(championId);
+
     return {
       championId,
-      championName: this.championsMap!.get(championId) || 'Unknown',
+      championName: championData?.name || 'Unknown',
       role,
       totalScore,
       breakdown: {
@@ -128,95 +133,73 @@ class RecommendationService {
     };
   }
 
-  /**
-   * Calculate win rate score (0-100)
-   * Champions with higher win rates get higher scores
-   */
   private calculateWinRateScore(stats: ChampionStats): number {
-    // Normalize win rate to 0-100 scale
-    // 50% WR = 50 score, 55% WR = 100 score
     const baseScore = (stats.winRate - 0.45) * 200;
     return Math.max(0, Math.min(100, baseScore));
   }
 
-  /**
-   * Calculate pick rate score (0-100)
-   * Popular champions are generally safer picks
-   */
   private calculatePickRateScore(stats: ChampionStats): number {
-    // Normalize pick rate (typically 0-20%)
-    // 5% pick rate = 50 score, 10%+ = 100 score
-    const baseScore = (stats.pickRate / 0.10) * 100;
-    return Math.max(0, Math.min(100, baseScore));
+    // Since we can't get true pick rate from Riot API, use tier as proxy
+    const tierScores: { [key: string]: number } = {
+      'S': 80,
+      'A': 60,
+      'B': 40,
+      'C': 20,
+      'D': 10
+    };
+    return tierScores[stats.tier] || 50;
   }
 
-  /**
-   * Calculate counter score based on matchups against enemy team
-   * Higher score = better matchups
-   */
   private async calculateCounterScore(
     championId: number,
     state: ChampionSelectState,
     role: Role
   ): Promise<number> {
     if (!config.features.enableCounterCalculation || state.enemyTeam.length === 0) {
-      return 50; // Neutral score if no enemies picked
+      return 50;
     }
 
     const matchupPromises = state.enemyTeam.map(enemy =>
-      dataService.getMatchupData(championId, enemy.championId, role)
+      statsAggregatorService.getMatchupData(championId, enemy.championId, role)
     );
 
     const matchups = await Promise.all(matchupPromises);
-    const validMatchups = matchups.filter((m): m is Matchup => m !== null && m.matches >= 50);
+    const validMatchups = matchups.filter((m): m is Matchup => m !== null && m.matches >= 10);
 
     if (validMatchups.length === 0) {
-      return 50; // Neutral if no matchup data
+      return 50;
     }
 
-    // Average win rate across all matchups
     const avgWinRate = validMatchups.reduce((sum, m) => sum + m.winRate, 0) / validMatchups.length;
-
-    // Normalize to 0-100 (45% WR = 0, 50% = 50, 55% = 100)
     const score = ((avgWinRate - 0.45) / 0.10) * 100;
     return Math.max(0, Math.min(100, score));
   }
 
-  /**
-   * Calculate synergy score based on team composition
-   * Higher score = better synergy with allies
-   */
   private async calculateSynergyScore(
     championId: number,
     state: ChampionSelectState,
     role: Role
   ): Promise<number> {
     if (!config.features.enableSynergyCalculation || state.myTeam.length === 0) {
-      return 50; // Neutral score if no allies
+      return 50;
     }
 
     const synergyPromises = state.myTeam.map(ally =>
-      dataService.getSynergyData(championId, ally.championId, role)
+      statsAggregatorService.getSynergyData(championId, ally.championId, role)
     );
 
     const synergies = await Promise.all(synergyPromises);
-    const validSynergies = synergies.filter((s): s is Synergy => s !== null && s.matches >= 30);
+    const validSynergies = synergies.filter((s): s is Synergy => s !== null && s.matches >= 5);
 
     if (validSynergies.length === 0) {
-      return 50; // Neutral if no synergy data
+      return 50;
     }
 
-    // Average win rate with all allies
     const avgWinRate = validSynergies.reduce((sum, s) => sum + s.winRate, 0) / validSynergies.length;
-
-    // Normalize to 0-100
     const score = ((avgWinRate - 0.48) / 0.08) * 100;
     return Math.max(0, Math.min(100, score));
   }
 
-  /**
-   * Generate human-readable reasoning for recommendation
-   */
   private generateReasoning(
     stats: ChampionStats,
     scores: {
@@ -229,23 +212,16 @@ class RecommendationService {
   ): string[] {
     const reasons: string[] = [];
 
-    // Win rate reasoning
     if (stats.winRate >= 0.52) {
       reasons.push(`Strong ${(stats.winRate * 100).toFixed(1)}% win rate in ${stats.tier} tier`);
     } else if (stats.winRate >= 0.50) {
       reasons.push(`Solid ${(stats.winRate * 100).toFixed(1)}% win rate`);
     }
 
-    // Pick rate reasoning
-    if (stats.pickRate >= 0.10) {
-      reasons.push('Very popular pick - proven reliability');
-    } else if (stats.pickRate >= 0.05) {
-      reasons.push('Popular meta pick');
-    } else if (stats.pickRate < 0.02) {
-      reasons.push('Niche pick - consider team comfort');
+    if (stats.tier === 'S' || stats.tier === 'A') {
+      reasons.push(`High tier champion (${stats.tier} tier)`);
     }
 
-    // Counter reasoning
     if (scores.counterScore >= 70) {
       reasons.push('Excellent matchup into enemy composition');
     } else if (scores.counterScore >= 55) {
@@ -254,36 +230,19 @@ class RecommendationService {
       reasons.push('Challenging matchups - requires skill');
     }
 
-    // Synergy reasoning
     if (scores.synergyScore >= 65 && state.myTeam.length > 0) {
       reasons.push('Strong synergy with team composition');
-    } else if (scores.synergyScore < 40 && state.myTeam.length > 0) {
-      reasons.push('Limited synergy with current team');
     }
 
-    // Default if no specific reasons
+    if (stats.matches < 50) {
+      reasons.push('Limited data - results may vary');
+    }
+
     if (reasons.length === 0) {
       reasons.push('Balanced pick for current situation');
     }
 
     return reasons;
-  }
-
-  /**
-   * Normalize weights to ensure they sum to 1.0
-   */
-  normalizeWeights(weights: Partial<RecommendationWeights>): RecommendationWeights {
-    const defaultWeights = config.defaultWeights;
-    const merged = { ...defaultWeights, ...weights };
-    
-    const sum = merged.winRate + merged.pickRate + merged.counterScore + merged.synergyScore;
-    
-    return {
-      winRate: merged.winRate / sum,
-      pickRate: merged.pickRate / sum,
-      counterScore: merged.counterScore / sum,
-      synergyScore: merged.synergyScore / sum
-    };
   }
 }
 
