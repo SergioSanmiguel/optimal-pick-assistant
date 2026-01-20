@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import config from '../config';
+import config from '../config/config';
 import logger from '../utils/logger';
 import { RateLimiter } from '../utils/rate-limiter';
 

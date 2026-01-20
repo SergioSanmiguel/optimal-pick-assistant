@@ -107,6 +107,8 @@ export interface DataServiceConfig {
   cacheDuration: number; // milliseconds
   retryAttempts: number;
   retryDelay: number;
+  sampleSize: number; // Number of matches to analyze per champion
+  minMatches: number; // Minimum matches required for stats
 }
 
 // Error types

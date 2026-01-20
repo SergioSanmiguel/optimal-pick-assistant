@@ -1,4 +1,4 @@
-import config from '../config';
+import config from '../config/config';
 import statsAggregatorService from './stats-aggregator.service';
 import riotApiService from './riot-api.service';
 import logger from '../utils/logger';
@@ -83,7 +83,7 @@ class RecommendationService {
   /**
    * Calculate comprehensive score for a single champion
    */
-  private async calculateChampionScore(
+  public async calculateChampionScore(
     championId: number,
     state: ChampionSelectState,
     weights: RecommendationWeights

@@ -1,6 +1,6 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import config from './config';
+import config from './config/config';
 import { apiController } from './controllers/api.controller';
 import logger from './utils/logger';
 import lcuService from './services/lcu.service';

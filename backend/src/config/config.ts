@@ -38,6 +38,7 @@ export const config = {
 
   // Data service configuration (now using Riot API)
   dataService: {
+    
     cacheDuration: 3600000, // 1 hour
     retryAttempts: 3,
     retryDelay: 2000,

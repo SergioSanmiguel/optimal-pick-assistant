@@ -1,4 +1,4 @@
-import config from '../config';
+import config from '../config/config';
 
 enum LogLevel {
   ERROR = 0,
